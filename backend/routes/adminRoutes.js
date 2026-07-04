@@ -98,7 +98,7 @@ router.patch('/sem8/finalize/:studentId', sem8Controller.finalizeSem8Track);
 
 const sem4Controller = require('../controllers/sem4Controller');
 router.get('/sem4/track-choices', sem4Controller.listSem4TrackChoices);
-router.patch('/sem4/finalize/:studentId', sem4Controller.setSem4Choice);
+router.patch('/sem4/finalize/:studentId', sem4Controller.finalizeSem4Track);
 
 // System Configuration routes
 router.get('/system-config', adminController.getSystemConfigurations);

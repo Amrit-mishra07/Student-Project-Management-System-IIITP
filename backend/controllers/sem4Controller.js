@@ -1,12 +1,15 @@
 const SystemConfig = require('../models/SystemConfig');
 const Student = require('../models/Student');
 
-const getCurrentAcademicYear = async () => {
-  const year = await SystemConfig.getConfigValue('academic.currentYear');
-  if (year) return year;
+const getCurrentAcademicYear = () => {
   const now = new Date();
-  const next = now.getFullYear() + 1;
-  return `${now.getFullYear()}-${next.toString().slice(-2)}`;
+  const month = now.getMonth(); // 0 = January, 6 = July
+  const year = now.getFullYear();
+  if (month >= 6) {
+    return `${year}-${(year + 1).toString().slice(-2)}`;
+  } else {
+    return `${year - 1}-${year.toString().slice(-2)}`;
+  }
 };
 
 exports.setSem4Choice = async (req, res) => {
@@ -82,34 +85,13 @@ exports.listSem4TrackChoices = async (req, res) => {
       .select('fullName misNumber contactNumber branch collegeEmail semesterSelections user')
       .lean();
 
-    let trackChoices = students
-      .map(student => {
-        const selection = student.semesterSelections?.find(
-          s => s.semester === 4 && s.academicYear === academicYearFilter
-        );
-        if (!selection) return null;
-
-        return {
-          _id: student._id,
-          studentId: student._id,
-          fullName: student.fullName,
-          misNumber: student.misNumber,
-          contactNumber: student.contactNumber,
-          branch: student.branch,
-          email: student.collegeEmail || student.user?.email,
-          chosenTrack: selection.chosenTrack,
-          finalizedTrack: selection.finalizedTrack,
-          verificationStatus: selection.verificationStatus,
-          adminRemarks: selection.adminRemarks,
-          reviewedBy: selection.reviewedBy,
-          reviewedAt: selection.reviewedAt,
-          trackChangedByAdminAt: selection.trackChangedByAdminAt,
-          previousTrack: selection.previousTrack,
-          choiceSubmittedAt: selection.choiceSubmittedAt,
-          updatedAt: selection.updatedAt
-        };
-      })
-      .filter(Boolean);
+    let trackChoices = students.map(student => {
+      const selection = student.semesterSelections.find(s => s.semester === 4);
+      return {
+        ...student,
+        selection: selection ? { ...selection } : null
+      };
+    });
 
     if (status) {
       trackChoices = trackChoices.filter(choice => choice.verificationStatus === status);
@@ -122,21 +104,9 @@ exports.listSem4TrackChoices = async (req, res) => {
     }
 
     trackChoices.sort((a, b) => {
-      const emailA = (a.email || '').toLowerCase();
-      const emailB = (b.email || '').toLowerCase();
-
-      if (emailA && emailB) {
-        return emailA.localeCompare(emailB);
-      }
-
-      const misA = a.misNumber || '';
-      const misB = b.misNumber || '';
-
-      if (misA && misB) {
-        return misA.localeCompare(misB);
-      }
-
-      return 0;
+      const keyA = (a.collegeEmail || a.misNumber || '').toLowerCase();
+      const keyB = (b.collegeEmail || b.misNumber || '').toLowerCase();
+      return keyA.localeCompare(keyB);
     });
 
     return res.json({
@@ -149,3 +119,56 @@ exports.listSem4TrackChoices = async (req, res) => {
     return res.status(500).json({ success: false, message: 'Internal server error', error: error.message });
   }
 };
+
+exports.finalizeSem4Track = async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const { finalizedTrack } = req.body;
+
+    if (!['internship', 'coursework'].includes(finalizedTrack)) {
+      return res.status(400).json({
+        success: false,
+        message: "finalizedTrack must be 'internship' or 'coursework'"
+      });
+    }
+
+    const student = await Student.findById(studentId);
+    if (!student) {
+      return res.status(404).json({ success: false, message: 'Student not found' });
+    }
+
+    if (student.degree !== 'M.Tech' || student.semester !== 4) {
+      return res.status(400).json({
+        success: false,
+        message: 'This endpoint is only for M.Tech Semester 4 students'
+      });
+    }
+
+    const selectionIndex = student.semesterSelections.findIndex(s => s.semester === 4);
+    if (selectionIndex === -1) {
+      return res.status(400).json({
+        success: false,
+        message: 'Student has not made a track choice yet'
+      });
+    }
+
+    student.semesterSelections[selectionIndex].finalizedTrack = finalizedTrack;
+    student.semesterSelections[selectionIndex].verificationStatus = 'approved';
+    student.semesterSelections[selectionIndex].updatedAt = new Date();
+    await student.save();
+
+    return res.json({
+      success: true,
+      message: `Track finalized to '${finalizedTrack}' for student`,
+      data: student.semesterSelections[selectionIndex]
+    });
+  } catch (error) {
+    console.error('finalizeSem4Track error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error finalizing track',
+      error: error.message
+    });
+  }
+};
+
