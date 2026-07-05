@@ -93,13 +93,15 @@ exports.listSem4TrackChoices = async (req, res) => {
       };
     });
 
+    trackChoices = trackChoices.filter(choice => choice.selection !== null);
+
     if (status) {
-      trackChoices = trackChoices.filter(choice => choice.verificationStatus === status);
+      trackChoices = trackChoices.filter(choice => choice.selection?.verificationStatus === status);
     }
 
     if (track) {
       trackChoices = trackChoices.filter(
-        choice => choice.chosenTrack === track || choice.finalizedTrack === track
+        choice => choice.selection?.chosenTrack === track || choice.selection?.finalizedTrack === track
       );
     }
 
@@ -144,7 +146,9 @@ exports.finalizeSem4Track = async (req, res) => {
       });
     }
 
-    const selectionIndex = student.semesterSelections.findIndex(s => s.semester === 4);
+    const selectionIndex = student.semesterSelections.findIndex(
+      s => s.semester === 4
+    );
     if (selectionIndex === -1) {
       return res.status(400).json({
         success: false,
