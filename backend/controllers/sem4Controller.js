@@ -1,7 +1,15 @@
 const SystemConfig = require('../models/SystemConfig');
 const Student = require('../models/Student');
 
-const getCurrentAcademicYear = () => {
+const getCurrentAcademicYear = async () => {
+  try {
+    const config = await SystemConfig.findOne({ configKey: 'academic.currentYear', isActive: true });
+    if (config && config.configValue) {
+      return config.configValue;
+    }
+  } catch (e) {
+    // fall through to date-based calculation
+  }
   const now = new Date();
   const month = now.getMonth(); // 0 = January, 6 = July
   const year = now.getFullYear();
@@ -60,6 +68,7 @@ exports.getSem4Choice = async (req, res) => {
       });
     }
 
+    const academicYear = await getCurrentAcademicYear();
     const selection = student.getSemesterSelection(4) || null;
     return res.json({ success: true, data: selection });
   } catch (error) {
@@ -146,6 +155,7 @@ exports.finalizeSem4Track = async (req, res) => {
       });
     }
 
+    const academicYear = await getCurrentAcademicYear();
     const selectionIndex = student.semesterSelections.findIndex(
       s => s.semester === 4
     );
