@@ -75,6 +75,9 @@ router.get('/statistics/mtech/sem1', adminController.getMTechSem1Statistics);
 router.get('/mtech/sem2/registrations', adminController.getMTechSem2Registrations);
 router.get('/mtech/sem2/unregistered-students', adminController.getUnregisteredMTechSem2Students);
 router.get('/statistics/mtech/sem2', adminController.getMTechSem2Statistics);
+router.get('/mtech/sem4/registrations', adminController.getMTechSem4Registrations);
+router.get('/mtech/sem4/unregistered-students', adminController.getUnregisteredMTechSem4Students);
+router.get('/statistics/mtech/sem4', adminController.getMTechSem4Statistics);
 
 // Sem 6 specific routes
 router.get('/sem6/registrations', adminController.getSem6MajorProjectRegistrations);
@@ -92,6 +95,10 @@ router.patch('/sem7/internship1-track/:studentId', sem7Controller.changeInternsh
 const sem8Controller = require('../controllers/sem8Controller');
 router.get('/sem8/track-choices', sem8Controller.listSem8TrackChoices);
 router.patch('/sem8/finalize/:studentId', sem8Controller.finalizeSem8Track);
+
+const sem4Controller = require('../controllers/sem4Controller');
+router.get('/sem4/track-choices', sem4Controller.listSem4TrackChoices);
+router.patch('/sem4/finalize/:studentId', sem4Controller.finalizeSem4Track);
 
 // System Configuration routes
 router.get('/system-config', adminController.getSystemConfigurations);
